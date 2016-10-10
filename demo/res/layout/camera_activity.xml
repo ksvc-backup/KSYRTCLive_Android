@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/recorder_bg_new" >
+
+    <com.ksy.recordlib.service.view.CameraGLSurfaceView
+        android:id="@+id/camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentTop="true" />
+
+    <include
+        android:id="@+id/actionbar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/global_actionbar_height"
+        android:layout_gravity="top"
+        layout="@layout/camera_titlebar" />
+
+    <EditText
+        android:id="@+id/url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/actionbar"
+        android:gravity="center"
+        android:textColor="@color/font_color_35"
+        android:textSize="@dimen/font_size_38px" />
+
+    <TextView
+        android:id="@+id/debuginfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/url"
+        android:gravity="left"
+        android:textColor="@color/font_color_41"
+        android:textSize="@dimen/font_size_22px" />
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_below="@+id/debuginfo">
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <!-- view of local -->
+            <RelativeLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content" >
+
+                <TextView
+                    android:id="@+id/tvLocalURI"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="local URI:" />
+                <EditText
+                    android:id="@+id/etUserName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="sip:alice@microsoft.com"
+                    android:inputType="number"
+                    android:layout_alignTop="@id/tvLocalURI"
+                    android:layout_toRightOf="@id/tvLocalURI" />
+
+                <Button
+                    android:id="@+id/btnRegister"
+                    android:text="register"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignLeft="@+id/tvLocalURI"
+                    android:layout_below="@+id/etUserName" />
+                <TextView
+                    android:id="@+id/tvRegisterStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="status"
+                    android:textColor="@android:color/holo_red_dark"
+                    android:layout_alignTop="@id/btnRegister"
+                    android:layout_toRightOf="@id/btnRegister" />
+                <ImageView
+                    android:layout_width="fill_parent"
+                    android:layout_height="1dp"
+                    android:background="#888888"
+                    android:layout_alignLeft="@+id/btnRegister"
+                    android:layout_below="@+id/btnRegister"/>
+
+            </RelativeLayout>
+
+            <!-- view of start call -->
+            <RelativeLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content" >
+
+                <TextView
+                    android:id="@+id/tvRemoteURI"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="remote URI:" />
+                <EditText
+                    android:id="@+id/etRemoteURI"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="sip:bob@google.com"
+                    android:inputType="number"
+                    android:layout_alignTop="@id/tvRemoteURI"
+                    android:layout_toRightOf="@id/tvRemoteURI" />
+                <Button
+                    android:id="@+id/btnCall"
+                    android:text="start call"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignLeft="@+id/tvRemoteURI"
+                    android:layout_below="@+id/etRemoteURI" />
+                <TextView
+                    android:id="@+id/tvCallStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="status"
+                    android:textColor="@android:color/holo_red_dark"
+                    android:layout_alignTop="@id/btnCall"
+                    android:layout_toRightOf="@id/btnCall" />
+                <ImageView
+                    android:layout_width="fill_parent"
+                    android:layout_height="1dp"
+                    android:background="#888888"
+                    android:layout_alignLeft="@+id/btnCall"
+                    android:layout_below="@+id/btnCall"/>
+
+            </RelativeLayout>
+
+            <!-- view of answer call -->
+            <RelativeLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content" >
+                <TextView
+                    android:id="@+id/tvIncomming"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="who is calling"/>
+                <Button
+                    android:id="@+id/btnAnswer"
+                    android:text="answer call"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignLeft="@+id/tvIncomming"
+                    android:layout_below="@+id/tvIncomming" />
+                <Button
+                    android:id="@+id/btnReject"
+                    android:text="reject call"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignTop="@id/btnAnswer"
+                    android:layout_toRightOf="@id/btnAnswer" />
+                <ImageView
+                    android:layout_width="fill_parent"
+                    android:layout_height="1dp"
+                    android:background="#888888"
+                    android:layout_alignLeft="@+id/btnAnswer"
+                    android:layout_below="@+id/btnAnswer"/>
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content" >
+                <TextView
+                    android:id="@+id/tvConfig"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <include
+        android:id="@+id/bar_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        layout="@layout/camera_bottombar" />
+
+</RelativeLayout>
