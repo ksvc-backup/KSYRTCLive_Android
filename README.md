@@ -23,4 +23,4 @@ demo中有测试评估账号，可以直接实现一对一连麦。
 - 主页：[金山云](http://www.ksyun.com/)
 - 邮箱：<zengfanping@kingsoft.com>
 - QQ讨论群：574179720
-- Issues: <https://github.com/ksvc/KSYStreamer_Android/issues>
+- Issues: <https://github.com/ksvc/KSYRTCLive_Android/issues>
