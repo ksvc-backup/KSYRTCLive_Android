@@ -4,8 +4,8 @@
 
 ## 二. 运行环境
 
-* 最低支持版本为Android 4.0 (API level 15)
-* 支持的cpu架构：armv7, arm64, x86
+* 最低支持版本为Android 4.4 
+* 支持的cpu架构：armv7, arm64
 
 ## 三. 开发指南
 
