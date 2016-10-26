@@ -168,7 +168,7 @@ public class CameraActivity extends Activity implements RTCEngineEventListener, 
     private final static int MSG_MAIN_AUTH_FAILED = -8001;
     private final static int MSG_MAIN_RTC_BREAK = -8002;
 
-    private final String RTC_AUTH_SERVER = "http://120.132.89.26:6001/rtcauth";
+    private final String RTC_AUTH_SERVER = "http://rtc.vcloud.ks-live.com:6002/rtcauth";
 
     private final String RTC_AUTH_URI = "https://rtc.vcloud.ks-live.com:6001";
     private final String RTC_UINIQUE_NAME = "apptest";
