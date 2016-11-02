@@ -3,26 +3,30 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.3.0'
+        classpath 'com.android.tools.build:gradle:2.2.2'
     }
 }
 apply plugin: 'com.android.application'
+//apply plugin: 'com.android.library'
 
 dependencies {
-    compile fileTree(dir: 'libs', include: '*.jar')
-    compile fileTree(dir: 'libs/armeabi-v7a', include: '*/so')
+    compile fileTree(include: '*.jar', dir: 'libs')
+    compile fileTree(include: '*/so', dir: 'libs')
+    compile files('libs/libksystat.jar')
     compile 'com.android.support:support-v4:24.0.0'
 }
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "22.0.0"
-
-    defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 22
+    signingConfigs {
+        config {
+            keyAlias 'ksystreamer'
+            keyPassword 'kscloud'
+            storeFile file('ksystreamer.jks')
+            storePassword 'kscloud'
+        }
     }
-
+    compileSdkVersion 23
+    buildToolsVersion "21.1.2"
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -32,7 +36,8 @@ android {
             renderscript.srcDirs = ['src']
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
-            jniLibs.srcDir 'libs'
+            jniLibs.srcDir './libs/'
+            jni.srcDirs = []
         }
 
         // Move the tests to tests/java, tests/res, etc...
@@ -47,8 +52,31 @@ android {
         debug.setRoot('build-types/debug')
         release.setRoot('build-types/release')
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+    lintOptions {
+        abortOnError false
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.config
+            jniDebuggable true
+        }
+        release {
+            signingConfig signingConfigs.config
+        }
     }
 }
+
+task clearJar(type: Delete) {
+    delete 'build/libs/ksylive1.0.jar'
+}
+
+task makeJar(type: Jar) {
+    //指定生成的jar名
+    baseName 'ksylive1.0'
+    //从哪里打包class文件
+    from('build/intermediates/classes/debug/com/ksy/recordlib/service/')
+    //打包到jar后的目录结构
+    into('com/ksy/recordlib/service')
+}
+
+makeJar.dependsOn(clearJar, build)
