@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" >
+        <LinearLayout
+            android:id="@+id/rtcfps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RTC帧率"
+                android:textSize="16sp" />
+
+            <EditText
+                android:id="@+id/rtc_fps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="15" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RTC码率"
+                android:textSize="16sp"
+                android:layout_marginLeft="10dp"/>
+
+            <EditText
+                android:id="@+id/rtc_bitrate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="600" />
+        </LinearLayout>
+        <!-- view of local -->
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="local URI:" />
+            <EditText
+                android:id="@+id/rtc_local_uri"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="1001"/>
+
+            <Button
+                android:id="@+id/rtc_register"
+                android:text="register"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginLeft="20dp" />
+            <TextView
+                android:id="@+id/rtc_regist_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="unregistered"
+                android:textColor="@android:color/holo_red_dark"/>
+
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="fill_parent"
+            android:layout_height="1dp"
+            android:background="#888888"
+            android:layout_marginTop="5dp"/>
+
+        <!-- view of start call -->
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="remote URI:" />
+            <EditText
+                android:id="@+id/rtc_remote_uri"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="1002"/>
+            <Button
+                android:id="@+id/rtc_remote_call"
+                android:text="start call"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginLeft="20dp"/>
+            <TextView
+                android:id="@+id/rtc_remote_call_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="disconnect"
+                android:textColor="@android:color/holo_red_dark"/>
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="fill_parent"
+            android:layout_height="1dp"
+            android:background="#888888"
+            android:layout_marginTop="5dp"/>
+
+        <!-- view of answer call -->
+        <RelativeLayout
+            android:id="@+id/rtc_remote_receive"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/rtc_incomming_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Someone is calling you"/>
+            <Button
+                android:id="@+id/rtc_answer_call"
+                android:text="answer call"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_alignLeft="@+id/rtc_incomming_status"
+                android:layout_below="@+id/rtc_incomming_status" />
+            <Button
+                android:id="@+id/rtc_reject_call"
+                android:text="reject call"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_alignTop="@id/rtc_answer_call"
+                android:layout_toRightOf="@id/rtc_answer_call" />
+
+        </RelativeLayout>
+
+        <ImageView
+            android:layout_width="fill_parent"
+            android:layout_height="1dp"
+            android:background="#888888"
+            android:layout_marginTop="5dp"/>
+    </LinearLayout>
+</RelativeLayout>
