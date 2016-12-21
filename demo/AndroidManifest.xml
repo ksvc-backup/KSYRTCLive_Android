@@ -1,13 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ksy.recordlib.demo"
-    android:installLocation="preferExternal"
-    android:versionCode="1"
-    android:versionName="0.0.1">
-
-    <uses-sdk
-        android:minSdkVersion="14"
-        android:targetSdkVersion="19" />
+          xmlns:tools="http://schemas.android.com/tools"
+          package="com.ksyun.media.rtc.demo"
+          android:installLocation="preferExternal">
 
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -27,6 +22,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        tools:replace="android:allowBackup"
         android:allowBackup="false"
         android:alwaysRetainTaskState="true"
         android:anyDensity="true"
@@ -41,7 +37,7 @@
         android:smallScreens="true"
         android:theme="@style/ThemeWithTitle">
         <activity
-            android:name="com.ksy.recordlib.demo.DemoActivity"
+            android:name="com.ksyun.media.rtc.demo.DemoActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
@@ -52,12 +48,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity
-            android:name="com.ksy.recordlib.demo.CameraActivity"
+            android:name="com.ksyun.media.rtc.demo.RTCActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.RiseAnimation"></activity>
+            android:theme="@style/Theme.RiseAnimation">
+        </activity>
     </application>
 
 </manifest>

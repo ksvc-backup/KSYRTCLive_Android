@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="libksyrtc">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/libksyrtc.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
