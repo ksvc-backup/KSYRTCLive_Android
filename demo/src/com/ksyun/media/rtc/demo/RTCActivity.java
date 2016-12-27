@@ -27,6 +27,7 @@ import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.RectF;
 import android.hardware.Camera;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -41,6 +42,7 @@ import android.support.v4.app.ActivityCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -65,6 +67,7 @@ public class RTCActivity extends Activity implements
     private static final String TAG = "RTCActivity";
 
     private GLSurfaceView mCameraPreviewView;
+    private CameraTouchHelper mCameraTouchHelper;
     //private TextureView mCameraPreviewView;
     private CameraHintView mCameraHintView;
     private Chronometer mChronometer;
@@ -299,11 +302,14 @@ public class RTCActivity extends Activity implements
         });
 
         // touch focus and zoom support
-        CameraTouchHelper cameraTouchHelper = new CameraTouchHelper();
-        cameraTouchHelper.setCameraCapture(mStreamer.getCameraCapture());
-        mCameraPreviewView.setOnTouchListener(cameraTouchHelper);
+        mCameraTouchHelper = new CameraTouchHelper();
+        mCameraTouchHelper.setCameraCapture(mStreamer.getCameraCapture());
+        mCameraPreviewView.setOnTouchListener(mCameraTouchHelper);
         // set CameraHintView to show focus rect and zoom ratio
-        cameraTouchHelper.setCameraHintView(mCameraHintView);
+        mCameraTouchHelper.setCameraHintView(mCameraHintView);
+
+        //for rtc sub screen
+        mCameraTouchHelper.addTouchListener(mRTCSubScreenTouchListener);
 
         //set rtc info
         mStreamer.getRtcClient().setRTCErrorListener(mRTCErrorListener);
@@ -349,6 +355,7 @@ public class RTCActivity extends Activity implements
     public void onDestroy() {
         super.onDestroy();
         this.unregisterReceiver(mNetworkStateReceiver);
+        mCameraTouchHelper.removeAllTouchListener();
         mNetworkStateReceiver.removeListeners();
         if (mIsConnected) {
             mStreamer.getRtcClient().stopCall();
@@ -653,9 +660,6 @@ public class RTCActivity extends Activity implements
     }
 
     private void onBackoffClick() {
-//        if (!checkRTCStats()) {
-//            return;
-//        }
         new AlertDialog.Builder(RTCActivity.this).setCancelable(true)
                 .setTitle("结束直播?")
                 .setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -1052,6 +1056,7 @@ public class RTCActivity extends Activity implements
                 mRTCLocalURIEditText.getText().toString());
         mStreamer.getRtcClient().setRTCUniqueName(RTC_UINIQUE_NAME);
         //has default value
+        mStreamer.setRTCMainScreen(RTCConstants.RTC_MAIN_SCREEN_CAMERA);
         mStreamer.getRtcClient().openChattingRoom(false);
         mStreamer.getRtcClient().setRTCResolutionScale(0.5f);
         mStreamer.getRtcClient().setRTCFps(Integer.parseInt(mRTCFpsEditText.getText().toString()));
@@ -1083,7 +1088,6 @@ public class RTCActivity extends Activity implements
         //can register again
         mIsRegisted = false;
         if (mIsConnected) {
-            mStreamer.stopRTC();
             mIsConnected = false;
         }
         mRTCRegistButton.setEnabled(true);
@@ -1102,7 +1106,6 @@ public class RTCActivity extends Activity implements
     private void doUnRegisteredResult() {
         mIsRegisted = false;
         if (mIsConnected) {
-            mStreamer.stopRTC();
             mIsConnected = false;
         }
         //can register again
@@ -1113,7 +1116,6 @@ public class RTCActivity extends Activity implements
         mRTCRemoteCallButton.setEnabled(false);
         mRTCRemoteCallButton.setText("start call");
         mRTCRemoteCallStatusTextView.setText("disconnected");
-        mStreamer.setRTCMainScreen(RTCConstants.RTC_MAIN_SCREEN_CAMERA);
     }
 
     private void doStartCallSuccess() {
@@ -1122,9 +1124,6 @@ public class RTCActivity extends Activity implements
         mRTCRemoteCallButton.setEnabled(true);
         mRTCRemoteCallButton.setText("stop call");
         mRTCRemoteCallStatusTextView.setText("connected");
-        mStreamer.startRTC();
-
-        mStreamer.setRTCMainScreen(RTCConstants.RTC_MAIN_SCREEN_CAMERA);
     }
 
     private void doStopCallResult() {
@@ -1133,9 +1132,6 @@ public class RTCActivity extends Activity implements
         mRTCRemoteCallButton.setEnabled(true);
         mRTCRemoteCallButton.setText("start call");
         mRTCRemoteCallStatusTextView.setText("disconnected");
-        //to stop RTC video/audio
-        mStreamer.stopRTC();
-        mStreamer.setRTCMainScreen(RTCConstants.RTC_MAIN_SCREEN_CAMERA);
     }
 
     private void doStartCallFailed(int status) {
@@ -1159,9 +1155,6 @@ public class RTCActivity extends Activity implements
         mRTCRemoteCallStatusTextView.setText("disconnected");
         Toast.makeText(this, "call break", Toast
                 .LENGTH_SHORT).show();
-        //to stop RTC video/audio
-        mStreamer.stopRTC();
-        mStreamer.setRTCMainScreen(RTCConstants.RTC_MAIN_SCREEN_CAMERA);
     }
 
     private void doReceiveRemoteCall(final String remoteUri) {
@@ -1246,6 +1239,147 @@ public class RTCActivity extends Activity implements
             }
         }
     };
+
+    /***********************************
+     * for rtc sub move&switch
+     ********************************/
+    private float mSubTouchStartX;
+    private float mSubTouchStartY;
+    private float mLastRawX;
+    private float mLastRawY;
+    private float mLastX;
+    private float mLastY;
+    private float mSubMaxX = 0;   //小窗可移动的最大X轴距离
+    private float mSubMaxY = 0;  //小窗可以移动的最大Y轴距离
+    private boolean mIsSubMoved = false;  //小窗是否移动过了，如果移动过了，ACTION_UP时不触发大小窗内容切换
+    private int SUB_TOUCH_MOVE_MARGIN = 30;  //触发移动的最小距离
+
+    private CameraTouchHelper.OnTouchListener mRTCSubScreenTouchListener = new CameraTouchHelper.OnTouchListener() {
+        @Override
+        public boolean onTouch(View view, MotionEvent event) {
+            //获取相对屏幕的坐标，即以屏幕左上角为原点
+            mLastRawX = event.getRawX();
+            mLastRawY = event.getRawY();
+            // 预览区域的大小
+            int width = view.getWidth();
+            int height = view.getHeight();
+            //小窗的位置信息
+            RectF subRect = mStreamer.getRTCSubScreenRect();
+            int left = (int) (subRect.left * width);
+            int right = (int) (subRect.right * width);
+            int top = (int) (subRect.top * height);
+            int bottom = (int) (subRect.bottom * height);
+            int subWidth = right - left;
+            int subHeight = bottom - top;
+
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    //只有在小屏区域才触发位置改变
+                    if (isSubScreenArea(event.getX(), event.getY(), left, right, top, bottom)) {
+                        //获取相对sub区域的坐标，即以sub左上角为原点
+                        mSubTouchStartX = event.getX() - left;
+                        mSubTouchStartY = event.getY() - top;
+                        mLastX = event.getX();
+                        mLastY = event.getY();
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    int moveX = (int) Math.abs(event.getX() - mLastX);
+                    int moveY = (int) Math.abs(event.getY() - mLastY);
+                    if (mSubTouchStartX > 0f && mSubTouchStartY > 0f && (
+                            (moveX > SUB_TOUCH_MOVE_MARGIN) ||
+                                    (moveY > SUB_TOUCH_MOVE_MARGIN))) {
+                        //触发移动
+                        mIsSubMoved = true;
+                        updateSubPosition(width, height, subWidth, subHeight);
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    //未移动并且在小窗区域，则触发大小窗切换
+                    if (!mIsSubMoved && isSubScreenArea(event.getX(), event.getY(), left, right,
+                            top, bottom)) {
+                        mStreamer.switchRTCMainScreen();
+                    }
+
+                    mIsSubMoved = false;
+                    mSubTouchStartX = 0f;
+                    mSubTouchStartY = 0f;
+                    mLastX = 0f;
+                    mLastY = 0f;
+                    break;
+            }
+
+            return true;
+        }
+    };
+
+    /**
+     * 是否在小窗区域移动
+     *
+     * @param x      当前点击的相对小窗左上角的x坐标
+     * @param y      当前点击的相对小窗左上角的y坐标
+     * @param left   小窗左上角距离预览区域左上角的x轴距离
+     * @param right  小窗右上角距离预览区域左上角的x轴距离
+     * @param top    小窗左上角距离预览区域左上角的y轴距离
+     * @param bottom 小窗右上角距离预览区域左上角的y轴距离
+     * @return
+     */
+    private boolean isSubScreenArea(float x, float y, int left, int right, int top, int bottom) {
+        if (!mIsConnected) {
+            return false;
+        }
+        if (x > left && x < right &&
+                y > top && y < bottom) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 触发移动小窗
+     *
+     * @param screenWidth 预览区域width
+     * @param sceenHeight 预览区域height
+     * @param subWidth    小窗区域width
+     * @param subHeight   小窗区域height
+     */
+    private void updateSubPosition(int screenWidth, int sceenHeight, int subWidth, int subHeight) {
+        mSubMaxX = screenWidth - subWidth;
+        mSubMaxY = sceenHeight - subHeight;
+
+        //更新浮动窗口位置参数
+        float newX = (mLastRawX - mSubTouchStartX);
+        float newY = (mLastRawY - mSubTouchStartY);
+
+        //不能移出预览区域最左边和最上边
+        if (newX < 0) {
+            newX = 0;
+        }
+
+        if (newY < 0) {
+            newY = 0;
+        }
+
+        //不能移出预览区域最右边和最下边
+        if (newX > mSubMaxX) {
+            newX = mSubMaxX;
+        }
+
+        if (newY > mSubMaxY) {
+            newY = mSubMaxY;
+        }
+        //小窗的width和height不发生变化
+        RectF subRect = mStreamer.getRTCSubScreenRect();
+        float width = subRect.width();
+        float height = subRect.height();
+
+        float left = newX / screenWidth;
+        float top = newY / sceenHeight;
+
+        mStreamer.setRTCSubScreenRect(left, top, width, height, RTCConstants.SCALING_MODE_CENTER_CROP);
+    }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private void registerConnectivityActionLollipop() {
