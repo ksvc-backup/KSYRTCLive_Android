@@ -1,3 +1,5 @@
+apply plugin: 'com.android.application'
+
 buildscript {
     repositories {
         mavenCentral()
@@ -6,13 +8,21 @@ buildscript {
         classpath 'com.android.tools.build:gradle:2.2.2'
     }
 }
-apply plugin: 'com.android.application'
+
+allprojects {
+    repositories {
+        jcenter()
+    }
+}
 
 dependencies {
-    compile fileTree(include: '*.jar', dir: 'libs')
-    compile fileTree(include: '*/so', dir: 'libs')
-    compile files('libs/libksystat.jar')
-    compile 'com.android.support:support-v4:24.0.0'
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile fileTree(dir: 'libs/armeabi-v7a', include: '*/so')
+    compile 'com.android.support:appcompat-v7:24.2.1'
+    compile 'com.ksyun.media:libksylive-java:2.2.1'
+    compile 'com.ksyun.media:libksylive-arm64:2.2.1'
+    compile 'com.ksyun.media:libksylive-armv7a:2.2.1'
+    compile 'com.ksyun.media:libksylive-x86:2.2.1'
 }
 
 android {

@@ -8,13 +8,19 @@
     <string name="app_name">RTCDemo</string>
     <string name="hello_world">Hello world!</string>
     <string name="click_to_shoot">开始直播</string>
+    <string name="start_recording">开始录制</string>
+    <string name="capture_thumbnail">截屏</string>
     <string name="beauty_switcher">美颜</string>
     <string name="watermark">水印</string>
     <string name="mute">静音</string>
     <string name="bgm">bgm</string>
     <string name="audio_filter_selected">音频滤镜</string>
     <string name="ear_mirror">耳返</string>
+    <string name="pip">画中画</string>
+    <string name="stop_pip">停止画中画</string>
     <string name="flash">Flash</string>
+    <string name="picture_pip">图片画中画</string>
+    <string name="stop_picture_pip">停止图片画中画</string>
     <string name="front_mirror">前置镜像</string>
     <string name="audio_only">音频推流</string>
 

@@ -1,7 +1,5 @@
 package com.ksyun.media.rtc.demo;
 
-import com.ksyun.media.streamer.kit.StreamerConstants;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.text.InputType;
@@ -12,8 +10,14 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
-public class DemoActivity extends Activity implements OnClickListener {
+import com.ksyun.media.streamer.encoder.VideoEncodeFormat;
+import com.ksyun.media.streamer.framework.AVConst;
+import com.ksyun.media.streamer.kit.StreamerConstants;
+
+public class DemoActivity extends Activity
+        implements OnClickListener, RadioGroup.OnCheckedChangeListener{
     private static final String TAG = DemoActivity.class.getSimpleName();
     private Button mConnectButton;
     private EditText mUrlEditText;
@@ -28,9 +32,23 @@ public class DemoActivity extends Activity implements OnClickListener {
     private RadioButton mLandscapeButton;
     private RadioButton mPortraitButton;
 
+    private RadioGroup mEncodeGroup;
     private RadioButton mSWButton;
     private RadioButton mHWButton;
     private RadioButton mSW1Button;
+
+    private RadioGroup mEncodeTypeGroup;
+    private RadioButton mEncodeWithH264;
+    private RadioButton mEncodeWithH265;
+
+    private RadioGroup mSceneGroup;
+    private RadioButton mSceneDefaultButton;
+    private RadioButton mSceneShowSelfButton;
+    private RadioGroup mProfileGroup;
+    private RadioButton mProfileLowPowerButton;
+    private RadioButton mProfileBalanceButton;
+    private RadioButton mProfileHighPerfButton;
+
     private CheckBox mAutoStartCheckBox;
     private CheckBox mShowDebugInfoCheckBox;
 
@@ -56,11 +74,47 @@ public class DemoActivity extends Activity implements OnClickListener {
         mRes720Button = (RadioButton) findViewById(R.id.radiobutton4);
         mLandscapeButton = (RadioButton) findViewById(R.id.orientationbutton1);
         mPortraitButton = (RadioButton) findViewById(R.id.orientationbutton2);
+        mEncodeGroup = (RadioGroup) findViewById(R.id.encode_group);
         mSWButton = (RadioButton) findViewById(R.id.encode_sw);
         mHWButton = (RadioButton) findViewById(R.id.encode_hw);
         mSW1Button = (RadioButton) findViewById(R.id.encode_sw1);
+        mEncodeTypeGroup = (RadioGroup) findViewById(R.id.encode_type);
+        mEncodeWithH264 = (RadioButton) findViewById(R.id.encode_h264);
+        mEncodeWithH265 = (RadioButton) findViewById(R.id.encode_h265);
+        mSceneGroup = (RadioGroup) findViewById(R.id.encode_scene);
+        mSceneDefaultButton = (RadioButton) findViewById(R.id.encode_scene_default);
+        mSceneShowSelfButton = (RadioButton) findViewById(R.id.encode_scene_show_self);
+        mProfileGroup = (RadioGroup) findViewById(R.id.encode_profile);
+        mProfileLowPowerButton = (RadioButton) findViewById(R.id.encode_profile_low_power);
+        mProfileBalanceButton = (RadioButton) findViewById(R.id.encode_profile_balance);
+        mProfileHighPerfButton = (RadioButton) findViewById(R.id.encode_profile_high_perf);
         mAutoStartCheckBox = (CheckBox) findViewById(R.id.autoStart);
         mShowDebugInfoCheckBox = (CheckBox) findViewById(R.id.print_debug_info);
+
+        updateUI();
+        mEncodeTypeGroup.setOnCheckedChangeListener(this);
+        mEncodeGroup.setOnCheckedChangeListener(this);
+    }
+
+    private void setEnableRadioGroup(RadioGroup radioGroup, boolean enable) {
+        for (int i=0; i<radioGroup.getChildCount(); i++) {
+            radioGroup.getChildAt(i).setEnabled(enable);
+        }
+    }
+
+    private void updateUI() {
+        if (mHWButton.isChecked() || mEncodeWithH265.isChecked()) {
+            setEnableRadioGroup(mSceneGroup, false);
+            setEnableRadioGroup(mProfileGroup, false);
+        } else {
+            setEnableRadioGroup(mSceneGroup, true);
+            setEnableRadioGroup(mProfileGroup, true);
+        }
+    }
+
+    @Override
+    public void onCheckedChanged(RadioGroup group, int checkedId) {
+        updateUI();
     }
 
     @Override
@@ -71,7 +125,10 @@ public class DemoActivity extends Activity implements OnClickListener {
                 int videoBitRate = 0;
                 int audioBitRate = 0;
                 int videoResolution;
+                int encodeType;
                 int encodeMethod;
+                int encodeScene;
+                int encodeProfile;
                 boolean landscape;
                 boolean startAuto;
                 boolean showDebugInfo;
@@ -103,12 +160,35 @@ public class DemoActivity extends Activity implements OnClickListener {
                         videoResolution = StreamerConstants.VIDEO_RESOLUTION_720P;
                     }
 
+                    if (mEncodeWithH265.isChecked()) {
+                        encodeType = AVConst.CODEC_ID_HEVC;
+                    } else {
+                        encodeType = AVConst.CODEC_ID_AVC;
+                    }
+
                     if (mHWButton.isChecked()) {
                         encodeMethod = StreamerConstants.ENCODE_METHOD_HARDWARE;
+                        mSceneGroup.setClickable(false);
                     } else if (mSWButton.isChecked()) {
+                        mSceneGroup.setClickable(true);
                         encodeMethod = StreamerConstants.ENCODE_METHOD_SOFTWARE;
                     } else {
+                        mSceneGroup.setClickable(true);
                         encodeMethod = StreamerConstants.ENCODE_METHOD_SOFTWARE_COMPAT;
+                    }
+
+                    if (mSceneDefaultButton.isChecked()) {
+                        encodeScene = VideoEncodeFormat.ENCODE_SCENE_DEFAULT;
+                    } else {
+                        encodeScene = VideoEncodeFormat.ENCODE_SCENE_SHOWSELF;
+                    }
+
+                    if (mProfileLowPowerButton.isChecked()) {
+                        encodeProfile = VideoEncodeFormat.ENCODE_PROFILE_LOW_POWER;
+                    } else if (mProfileBalanceButton.isChecked()) {
+                        encodeProfile = VideoEncodeFormat.ENCODE_PROFILE_BALANCE;
+                    } else {
+                        encodeProfile = VideoEncodeFormat.ENCODE_PROFILE_HIGH_PERFORMANCE;
                     }
 
                     landscape = mLandscapeButton.isChecked();
@@ -117,8 +197,8 @@ public class DemoActivity extends Activity implements OnClickListener {
 
                     RTCActivity.startActivity(getApplicationContext(), 0,
                             mUrlEditText.getText().toString(), frameRate, videoBitRate,
-                            audioBitRate, videoResolution, landscape, encodeMethod,
-                            startAuto, showDebugInfo);
+                            audioBitRate, videoResolution, landscape, encodeType,  encodeMethod,
+                            encodeScene, encodeProfile, startAuto, showDebugInfo);
                 }
                 break;
             default:
