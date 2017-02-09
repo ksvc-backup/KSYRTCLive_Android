@@ -78,7 +78,6 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
-@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 public class RTCActivity extends Activity implements
         ActivityCompat.OnRequestPermissionsResultCallback, NetworkStateReceiver.NetworkStateReceiverListener {
 
@@ -528,7 +527,9 @@ public class RTCActivity extends Activity implements
         super.onDestroy();
         mNetworkStateReceiver.removeListeners();
         this.unregisterReceiver(mNetworkStateReceiver);
-        mConnectivityManager.unregisterNetworkCallback(mConnectivityMangagerCallBack);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mConnectivityManager.unregisterNetworkCallback(mConnectivityMangagerCallBack);
+        }
         mCameraTouchHelper.removeAllTouchListener();
         if (mIsConnected) {
             mStreamer.getRtcClient().stopCall();
@@ -1589,9 +1590,7 @@ public class RTCActivity extends Activity implements
         mStreamer.setRTCSubScreenRect(left, top, width, height, RTCConstants.SCALING_MODE_CENTER_CROP);
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private void registerConnectivityActionLollipop() {
-
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             return;
         }
@@ -1599,7 +1598,7 @@ public class RTCActivity extends Activity implements
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest.Builder builder = new NetworkRequest.Builder();
 
-        mConnectivityMangagerCallBack =  new
+        mConnectivityMangagerCallBack = new
                 ConnectivityManager.NetworkCallback() {
                     @Override
                     public void onAvailable(Network network) {
