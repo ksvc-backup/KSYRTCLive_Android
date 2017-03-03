@@ -37,19 +37,41 @@
         android:smallScreens="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.ksyun.media.rtc.demo.DemoActivity"
+            android:name="com.ksyun.media.rtc.demo.WelcomeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.RiseAnimation">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.MAIN"/>
 
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="com.ksyun.media.rtc.demo.DemoActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.RiseAnimation">
+        </activity>
+
+        <activity
+            android:name="com.ksyun.media.rtc.demo.DemoChatActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.RiseAnimation">
+        </activity>
+
         <activity
             android:name="com.ksyun.media.rtc.demo.RTCActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.RiseAnimation">
+        </activity>
+
+        <activity
+            android:name="com.ksyun.media.rtc.demo.RTCChatActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTop"
             android:theme="@style/Theme.RiseAnimation">

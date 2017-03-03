@@ -1,7 +1,6 @@
 package com.ksyun.media.rtc.demo;
 
 import android.Manifest;
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -14,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.RectF;
 import android.hardware.Camera;
+import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkRequest;
@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.AppCompatSpinner;
@@ -31,6 +30,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
+import android.view.Surface;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -47,12 +48,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ksyun.media.player.IMediaPlayer;
+import com.ksyun.media.rtc.demo.filter.DemoAudioFilter;
+import com.ksyun.media.rtc.demo.filter.DemoFilter;
+import com.ksyun.media.rtc.demo.filter.DemoFilter2;
+import com.ksyun.media.rtc.demo.filter.DemoFilter3;
+import com.ksyun.media.rtc.demo.filter.DemoFilter4;
 import com.ksyun.media.rtc.kit.KSYRtcStreamer;
 import com.ksyun.media.rtc.kit.RTCClient;
 import com.ksyun.media.rtc.kit.RTCConstants;
 import com.ksyun.media.streamer.capture.camera.CameraTouchHelper;
 import com.ksyun.media.streamer.filter.audio.AudioFilterBase;
 import com.ksyun.media.streamer.filter.audio.AudioReverbFilter;
+import com.ksyun.media.streamer.filter.imgtex.ImgBeautyProFilter;
+import com.ksyun.media.streamer.filter.imgtex.ImgBeautyToneCurveFilter;
+import com.ksyun.media.streamer.filter.imgtex.ImgFilterBase;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilter;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterBase;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterMgt;
@@ -61,8 +70,6 @@ import com.ksyun.media.streamer.kit.OnAudioRawDataListener;
 import com.ksyun.media.streamer.kit.OnPreviewFrameListener;
 import com.ksyun.media.streamer.kit.StreamerConstants;
 import com.ksyun.media.streamer.logstats.StatsLogReport;
-import com.ksyun.media.streamer.filter.imgtex.ImgBeautyProFilter;
-import com.ksyun.media.streamer.filter.imgtex.ImgFilterBase;
 import com.ksyun.media.streamer.util.gles.GLRender;
 
 import java.io.BufferedOutputStream;
@@ -130,6 +137,9 @@ public class RTCActivity extends Activity implements
     private TextView mRuddyText;
     private AppCompatSeekBar mRuddySeekBar;
 
+    private int mLastRotation;
+    private OrientationEventListener mOrientationEventListener;
+
     private ButtonObserver mObserverButton;
     private CheckBoxObserver mCheckBoxObserver;
 
@@ -181,18 +191,18 @@ public class RTCActivity extends Activity implements
     public final static String VIDEO_BITRATE = "video_bitrate";
     public final static String AUDIO_BITRATE = "audio_bitrate";
     public final static String VIDEO_RESOLUTION = "video_resolution";
-    public final static String LANDSCAPE = "landscape";
+    public final static String ORIENTATION = "orientation";
     public final static String ENCODE_TYPE = "encode_type";
     public final static String ENCODE_METHOD = "encode_method";
     public final static String ENCODE_SCENE = "encode_scene";
     public final static String ENCODE_PROFILE = "encode_profile";
-    public final static String START_ATUO = "start_auto";
+    public final static String START_AUTO = "start_auto";
     public static final String SHOW_DEBUGINFO = "show_debuginfo";
 
     public static void startActivity(Context context, int fromType,
                                      String rtmpUrl, int frameRate,
                                      int videoBitrate, int audioBitrate,
-                                     int videoResolution, boolean isLandscape,
+                                     int videoResolution, int orientation,
                                      int encodeType, int encodeMethod,
                                      int encodeScene, int encodeProfile,
                                      boolean startAuto, boolean showDebugInfo) {
@@ -204,12 +214,12 @@ public class RTCActivity extends Activity implements
         intent.putExtra(VIDEO_BITRATE, videoBitrate);
         intent.putExtra(AUDIO_BITRATE, audioBitrate);
         intent.putExtra(VIDEO_RESOLUTION, videoResolution);
-        intent.putExtra(LANDSCAPE, isLandscape);
+        intent.putExtra(ORIENTATION, orientation);
         intent.putExtra(ENCODE_TYPE, encodeType);
         intent.putExtra(ENCODE_METHOD, encodeMethod);
         intent.putExtra(ENCODE_SCENE, encodeScene);
         intent.putExtra(ENCODE_PROFILE, encodeProfile);
-        intent.putExtra(START_ATUO, startAuto);
+        intent.putExtra(START_AUTO, startAuto);
         intent.putExtra(SHOW_DEBUGINFO, showDebugInfo);
         context.startActivity(intent);
     }
@@ -262,6 +272,7 @@ public class RTCActivity extends Activity implements
         mFrontMirrorCheckBox.setOnCheckedChangeListener(mCheckBoxObserver);
         mAudioOnlyCheckBox = (CheckBox) findViewById(R.id.audio_only);
         mAudioOnlyCheckBox.setOnCheckedChangeListener(mCheckBoxObserver);
+
         mBeautyChooseView = findViewById(R.id.beauty_choose);
         mBeautySpinner = (AppCompatSpinner) findViewById(R.id.beauty_spin);
         mBeautyGrindLayout = (LinearLayout) findViewById(R.id.beauty_grind);
@@ -335,15 +346,39 @@ public class RTCActivity extends Activity implements
             int encodeProfile = bundle.getInt(ENCODE_PROFILE);
             mStreamer.setVideoEncodeProfile(encodeProfile);
 
-            mIsLandscape = bundle.getBoolean(LANDSCAPE, false);
-            mStreamer.setRotateDegrees(mIsLandscape ? 90 : 0);
-            if (mIsLandscape) {
+            int orientation = bundle.getInt(ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            if (orientation == ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+                int rotation = getDisplayRotation();
+                mIsLandscape = (rotation % 180) != 0;
+                mStreamer.setRotateDegrees(rotation);
+                mLastRotation = rotation;
+                mOrientationEventListener = new OrientationEventListener(this,
+                        SensorManager.SENSOR_DELAY_NORMAL) {
+                    @Override
+                    public void onOrientationChanged(int orientation) {
+                        int rotation = getDisplayRotation();
+                        if (rotation != mLastRotation) {
+                            Log.d(TAG, "Rotation changed " + mLastRotation + "->" + rotation);
+                            mIsLandscape = (rotation % 180) != 0;
+                            mStreamer.setRotateDegrees(rotation);
+                            hideWaterMark();
+                            showWaterMark();
+                            mLastRotation = rotation;
+                        }
+                    }
+                };
+            } else if (orientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                mIsLandscape = true;
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                mStreamer.setRotateDegrees(90);
             } else {
+                mIsLandscape = false;
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                mStreamer.setRotateDegrees(0);
             }
 
-            mAutoStart = bundle.getBoolean(START_ATUO, false);
+            mAutoStart = bundle.getBoolean(START_AUTO, false);
             mPrintDebugInfo = bundle.getBoolean(SHOW_DEBUGINFO, false);
         }
         mStreamer.setDisplayPreview(mCameraPreviewView);
@@ -352,6 +387,8 @@ public class RTCActivity extends Activity implements
         //} else {
         //    mStreamer.setOffscreenPreview(720, 1280);
         //}
+        //断网等异常case触发自动重练
+        mStreamer.setEnableAutoRestart(true, 3000);
         mStreamer.setFrontCameraMirror(mFrontMirrorCheckBox.isChecked());
         mStreamer.setMuteAudio(mMuteCheckBox.isChecked());
         mStreamer.setEnableAudioPreview(mAudioPreviewCheckBox.isChecked());
@@ -409,7 +446,8 @@ public class RTCActivity extends Activity implements
 
     private void initBeautyUI() {
         String[] items = new String[]{"DISABLE", "BEAUTY_SOFT", "SKIN_WHITEN", "BEAUTY_ILLUSION",
-                "BEAUTY_DENOISE", "BEAUTY_SMOOTH", "BEAUTY_PRO", "DEMO_FILTER", "GROUP_FILTER"};
+                "BEAUTY_DENOISE", "BEAUTY_SMOOTH", "BEAUTY_PRO", "DEMO_FILTER", "GROUP_FILTER",
+                "ToneCurve", "复古", "胶片"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, items);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -438,6 +476,24 @@ public class RTCActivity extends Activity implements
                     groupFilter.add(new DemoFilter3(mStreamer.getGLRender()));
                     groupFilter.add(new DemoFilter4(mStreamer.getGLRender()));
                     mStreamer.getImgTexFilterMgt().setFilter(groupFilter);
+                } else if (position == 9) {
+                    ImgBeautyToneCurveFilter acvFilter = new ImgBeautyToneCurveFilter(mStreamer.getGLRender());
+                    acvFilter.setFromCurveFileInputStream(
+                            RTCActivity.this.getResources().openRawResource(R.raw.tone_cuver_sample));
+
+                    mStreamer.getImgTexFilterMgt().setFilter(acvFilter);
+                } else if (position == 10) {
+                    ImgBeautyToneCurveFilter acvFilter = new ImgBeautyToneCurveFilter(mStreamer.getGLRender());
+                    acvFilter.setFromCurveFileInputStream(
+                            RTCActivity.this.getResources().openRawResource(R.raw.fugu));
+
+                    mStreamer.getImgTexFilterMgt().setFilter(acvFilter);
+                } else if (position == 11) {
+                    ImgBeautyToneCurveFilter acvFilter = new ImgBeautyToneCurveFilter(mStreamer.getGLRender());
+                    acvFilter.setFromCurveFileInputStream(
+                            RTCActivity.this.getResources().openRawResource(R.raw.jiaopian));
+
+                    mStreamer.getImgTexFilterMgt().setFilter(acvFilter);
                 }
                 List<ImgFilterBase> filters = mStreamer.getImgTexFilterMgt().getFilter();
                 if (filters != null && !filters.isEmpty()) {
@@ -506,6 +562,10 @@ public class RTCActivity extends Activity implements
     @Override
     public void onResume() {
         super.onResume();
+        if (mOrientationEventListener != null &&
+                mOrientationEventListener.canDetectOrientation()) {
+            mOrientationEventListener.enable();
+        }
         startCameraPreviewWithPermCheck();
         mStreamer.onResume();
         if (mWaterMarkCheckBox.isChecked()) {
@@ -517,6 +577,9 @@ public class RTCActivity extends Activity implements
     @Override
     public void onPause() {
         super.onPause();
+        if (mOrientationEventListener != null) {
+            mOrientationEventListener.disable();
+        }
         mStreamer.onPause();
         mStreamer.stopCameraPreview();
         hideWaterMark();
@@ -560,6 +623,21 @@ public class RTCActivity extends Activity implements
                 break;
         }
         return true;
+    }
+
+    private int getDisplayRotation() {
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                return 0;
+            case Surface.ROTATION_90:
+                return 90;
+            case Surface.ROTATION_180:
+                return 180;
+            case Surface.ROTATION_270:
+                return 270;
+        }
+        return 0;
     }
 
     @Override
@@ -689,6 +767,7 @@ public class RTCActivity extends Activity implements
                     break;
                 case StreamerConstants.KSY_STREAMER_OPEN_STREAM_SUCCESS:
                     Log.d(TAG, "KSY_STREAMER_OPEN_STREAM_SUCCESS");
+                    mShootingText.setText(STOP_STRING);
                     mChronometer.setBase(SystemClock.elapsedRealtime());
                     mChronometer.start();
                     beginInfoUploadTimer();
@@ -783,6 +862,10 @@ public class RTCActivity extends Activity implements
                 case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_SERVER_DIED:
                     Log.d(TAG, "KSY_STREAMER_CAMERA_ERROR_SERVER_DIED");
                     break;
+                //Camera was disconnected due to use by higher priority user.
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_EVICTED:
+                    Log.d(TAG, "KSY_STREAMER_CAMERA_ERROR_EVICTED");
+                    break;
                 default:
                     Log.d(TAG, "what=" + what + " msg1=" + msg1 + " msg2=" + msg2);
                     break;
@@ -802,10 +885,14 @@ public class RTCActivity extends Activity implements
                         }
                     }, 5000);
                     break;
+                case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_CLOSE_FAILED:
+                case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_ERROR_UNKNOWN:
+                case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_OPEN_FAILED:
+                case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_WRITE_FAILED:
+                    break;
                 case StreamerConstants.KSY_STREAMER_VIDEO_ENCODER_ERROR_UNSUPPORTED:
-                case StreamerConstants.KSY_STREAMER_VIDEO_ENCODER_ERROR_UNKNOWN:
+                case StreamerConstants.KSY_STREAMER_VIDEO_ENCODER_ERROR_UNKNOWN: {
                     handleEncodeError();
-                default:
                     stopStream();
                     mMainHandler.postDelayed(new Runnable() {
                         @Override
@@ -813,6 +900,23 @@ public class RTCActivity extends Activity implements
                             startStream();
                         }
                     }, 3000);
+                }
+                break;
+                default:
+                    if (mStreamer.getEnableAutoRestart()) {
+                        mShootingText.setText(START_STRING);
+                        mShootingText.postInvalidate();
+                        mRecording = false;
+                        stopChronometer();
+                    } else {
+                        stopStream();
+                        mMainHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                startStream();
+                            }
+                        }, 3000);
+                    }
                     break;
             }
         }
@@ -1169,20 +1273,22 @@ public class RTCActivity extends Activity implements
             mRTCAuthResponse = new AuthHttpTask.KSYOnHttpResponse() {
                 @Override
                 public void onHttpResponse(int responseCode, final String response) {
-                    if (responseCode == 200) {
-                        mMainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                doRegister(response);
-                            }
-                        });
-                    } else {
-                        mMainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                doAuthFailed();
-                            }
-                        });
+                    if(mMainHandler != null) {
+                        if (responseCode == 200) {
+                            mMainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    doRegister(response);
+                                }
+                            });
+                        } else {
+                            mMainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    doAuthFailed();
+                                }
+                            });
+                        }
                     }
                 }
             };
@@ -1260,7 +1366,13 @@ public class RTCActivity extends Activity implements
 
     private void doRegister(String authString) {
         //must set before register
-        mStreamer.setRTCSubScreenRect(0.65f, 0.f, 0.35f, 0.3f, RTCConstants.SCALING_MODE_CENTER_CROP);
+        if (!mIsLandscape) {
+            mStreamer.setRTCSubScreenRect(0.65f, 0.f, 0.35f, 0.3f,
+                    RTCConstants.SCALING_MODE_CENTER_CROP);
+        } else {
+            mStreamer.setRTCSubScreenRect(0.65f, 0.f, 0.3f, 0.35f,
+                    RTCConstants.SCALING_MODE_CENTER_CROP);
+        }
         mStreamer.getRtcClient().setRTCAuthInfo(RTC_AUTH_URI, authString,
                 mRTCLocalURIEditText.getText().toString());
         mStreamer.getRtcClient().setRTCUniqueName(RTC_UINIQUE_NAME);

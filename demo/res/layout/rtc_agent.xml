@@ -34,7 +34,7 @@
                 android:id="@+id/rtc_bitrate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="600" />
+                android:text="150" />
         </LinearLayout>
         <!-- view of local -->
         <LinearLayout
