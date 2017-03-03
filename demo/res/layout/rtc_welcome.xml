@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+    <Button
+        android:id="@+id/rtc_streamer"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_width="150dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="10dp"
+        android:text="欢迎进入连麦推流"/>
+
+    <Button
+        android:id="@+id/rtc_chat"
+        android:layout_width="150dp"
+        android:layout_height="40dp"
+        android:text="欢迎进入连麦私聊"
+        android:layout_above="@+id/rtc_streamer"
+        android:layout_alignLeft="@+id/rtc_streamer"
+        android:layout_alignStart="@+id/rtc_streamer"/>
+</RelativeLayout>
