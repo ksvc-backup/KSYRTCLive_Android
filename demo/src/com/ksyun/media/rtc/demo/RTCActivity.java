@@ -16,6 +16,7 @@ import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
+import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
@@ -26,6 +27,7 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.AppCompatSpinner;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -86,7 +88,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class RTCActivity extends Activity implements
-        ActivityCompat.OnRequestPermissionsResultCallback, NetworkStateReceiver.NetworkStateReceiverListener {
+        ActivityCompat.OnRequestPermissionsResultCallback{
 
     private static final String TAG = "RTCActivity";
 
@@ -174,8 +176,6 @@ public class RTCActivity extends Activity implements
 
     private boolean mIsRegisted;
     private boolean mIsConnected;
-
-    private NetworkStateReceiver mNetworkStateReceiver;
 
     private AuthHttpTask mRTCAuthTask;
     private AuthHttpTask.KSYOnHttpResponse mRTCAuthResponse;
@@ -434,14 +434,6 @@ public class RTCActivity extends Activity implements
         if (!mIsRegisted) {
             mRTCRemoteCallButton.setEnabled(false);
         }
-
-        mNetworkStateReceiver = new NetworkStateReceiver();
-        mNetworkStateReceiver.addListener(new WeakReference<NetworkStateReceiver.NetworkStateReceiverListener>(this));
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        intentFilter.addAction(NetworkStateReceiver.CONNECTIVITY_ACTION_LOLLIPOP);
-        this.registerReceiver(mNetworkStateReceiver, intentFilter);
-        registerConnectivityActionLollipop();
     }
 
     private void initBeautyUI() {
@@ -588,11 +580,7 @@ public class RTCActivity extends Activity implements
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mNetworkStateReceiver.removeListeners();
-        this.unregisterReceiver(mNetworkStateReceiver);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            mConnectivityManager.unregisterNetworkCallback(mConnectivityMangagerCallBack);
-        }
+
         mCameraTouchHelper.removeAllTouchListener();
         if (mIsConnected) {
             mStreamer.getRtcClient().stopCall();
@@ -638,24 +626,6 @@ public class RTCActivity extends Activity implements
                 return 270;
         }
         return 0;
-    }
-
-    @Override
-    public void networkAvailable() {
-        //do nothoing
-    }
-
-    @Override
-    public void networkUnavailable() {
-        //stop&unregist RTC
-        if (mIsConnected) {
-            onRTCRemoteCallClick();
-            mIsConnected = false;
-        }
-        if (mIsRegisted) {
-            onRTCRegisterClick();
-            mIsRegisted = false;
-        }
     }
 
     private void startStream() {
@@ -1700,35 +1670,5 @@ public class RTCActivity extends Activity implements
         float top = newY / sceenHeight;
 
         mStreamer.setRTCSubScreenRect(left, top, width, height, RTCConstants.SCALING_MODE_CENTER_CROP);
-    }
-
-    private void registerConnectivityActionLollipop() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return;
-        }
-
-        mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkRequest.Builder builder = new NetworkRequest.Builder();
-
-        mConnectivityMangagerCallBack = new
-                ConnectivityManager.NetworkCallback() {
-                    @Override
-                    public void onAvailable(Network network) {
-                        Intent intent = new Intent(NetworkStateReceiver.CONNECTIVITY_ACTION_LOLLIPOP);
-                        intent.putExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false);
-
-                        sendBroadcast(intent);
-                    }
-
-                    @Override
-                    public void onLost(Network network) {
-                        Intent intent = new Intent(NetworkStateReceiver.CONNECTIVITY_ACTION_LOLLIPOP);
-                        intent.putExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, true);
-
-                        sendBroadcast(intent);
-                    }
-                };
-
-        mConnectivityManager.registerNetworkCallback(builder.build(), mConnectivityMangagerCallBack);
     }
 }
