@@ -19,10 +19,10 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile fileTree(dir: 'libs/armeabi-v7a', include: '*/so')
     compile 'com.android.support:appcompat-v7:24.2.1'
-    compile 'com.ksyun.media:libksylive-java:2.2.5'
-    compile 'com.ksyun.media:libksylive-arm64:2.2.5'
-    compile 'com.ksyun.media:libksylive-armv7a:2.2.5'
-    compile 'com.ksyun.media:libksylive-x86:2.2.5'
+    compile 'com.ksyun.media:libksylive-java:2.2.6'
+    compile 'com.ksyun.media:libksylive-arm64:2.2.6'
+    compile 'com.ksyun.media:libksylive-armv7a:2.2.6'
+    compile 'com.ksyun.media:libksylive-x86:2.2.6'
 }
 
 android {
