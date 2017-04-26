@@ -1,6 +1,9 @@
 # 金山云直播连麦Android SDK使用说明
 直播连麦基于[KSY Streamer Android SDK](https://github.com/ksvc/KSYStreamer_Android/wiki/Info&Error_Listener),是金山云推出的 Android 平台上的连麦SDK，同时具有直播推流的相关功能。
 ## 一. 功能特点
+> 超清连麦，不错过每一个细节!
+
+金山云提供高效H.265编解码内核，提供低码率下高质量连麦体验。欢迎试用！
 
 ### 连麦功能
 * 基于 [KSYLiveSDK](https://github.com/ksvc/KSYStreamer_Android)的 连麦功能。
