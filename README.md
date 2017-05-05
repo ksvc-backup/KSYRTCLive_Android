@@ -8,6 +8,14 @@
 ### 连麦功能
 * 基于 [KSYLiveSDK](https://github.com/ksvc/KSYStreamer_Android)的 连麦功能。
 
+### demo示例
+
+demo使用示例，请参考视频
+
+
+[![ScreenShot](https://raw.githubusercontent.com/wiki/ksvc/KSYRTCLive_Android/images/androidrtcdemo.png)](http://www.bilibili.com/video/av10327318/)
+
+
 ## 二. 运行环境
 
 * 最低支持版本为Android 4.4 
