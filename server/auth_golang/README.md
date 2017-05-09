@@ -1,3 +1,6 @@
+### 服务器鉴权示例
+请参考[auth_golang](https://github.com/ksvc/KSYRTCLive_iOS/tree/master/server/auth_golang)
+
 一、鉴权需要的参数:
 
 1.公钥
