@@ -6,7 +6,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -15,9 +14,6 @@ import android.graphics.RectF;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkInfo;
-import android.net.NetworkRequest;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,7 +23,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.AppCompatSpinner;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -58,6 +53,7 @@ import com.ksyun.media.rtc.demo.filter.DemoFilter4;
 import com.ksyun.media.rtc.kit.KSYRtcStreamer;
 import com.ksyun.media.rtc.kit.RTCClient;
 import com.ksyun.media.rtc.kit.RTCConstants;
+import com.ksyun.media.streamer.capture.CameraCapture;
 import com.ksyun.media.streamer.capture.camera.CameraTouchHelper;
 import com.ksyun.media.streamer.filter.audio.AudioFilterBase;
 import com.ksyun.media.streamer.filter.audio.AudioReverbFilter;
@@ -68,8 +64,6 @@ import com.ksyun.media.streamer.filter.imgtex.ImgTexFilter;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterBase;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterMgt;
 import com.ksyun.media.streamer.kit.KSYStreamer;
-import com.ksyun.media.streamer.kit.OnAudioRawDataListener;
-import com.ksyun.media.streamer.kit.OnPreviewFrameListener;
 import com.ksyun.media.streamer.kit.StreamerConstants;
 import com.ksyun.media.streamer.logstats.StatsLogReport;
 import com.ksyun.media.streamer.util.gles.GLRender;
@@ -78,7 +72,6 @@ import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -88,7 +81,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class RTCActivity extends Activity implements
-        ActivityCompat.OnRequestPermissionsResultCallback{
+        ActivityCompat.OnRequestPermissionsResultCallback {
 
     private static final String TAG = "RTCActivity";
 
@@ -154,7 +147,7 @@ public class RTCActivity extends Activity implements
     private boolean mPrintDebugInfo = false;
     private boolean mRecording = false;
     private boolean mIsFileRecording = false;
-    private boolean isFlashOpened = false;
+    private boolean mIsFlashOpened = false;
     private String mUrl;
     private String mDebugInfo = "";
     private String mBgmPath = "/sdcard/test.mp3";
@@ -165,10 +158,6 @@ public class RTCActivity extends Activity implements
     private boolean mSWEncoderUnsupported;
 
     //rtc
-
-    private ConnectivityManager mConnectivityManager;
-    private ConnectivityManager.NetworkCallback mConnectivityMangagerCallBack;
-
     //从server拿到健全串
     private final String RTC_AUTH_SERVER = "http://rtc.vcloud.ks-live.com:6002/rtcauth";
     private final String RTC_AUTH_URI = "https://rtc.vcloud.ks-live.com:6001";
@@ -363,7 +352,9 @@ public class RTCActivity extends Activity implements
                             mIsLandscape = (rotation % 180) != 0;
                             mStreamer.setRotateDegrees(rotation);
                             hideWaterMark();
-                            showWaterMark();
+                            if (mWaterMarkCheckBox.isChecked()) {
+                                showWaterMark();
+                            }
                             mLastRotation = rotation;
                         }
                     }
@@ -382,21 +373,18 @@ public class RTCActivity extends Activity implements
             mPrintDebugInfo = bundle.getBoolean(SHOW_DEBUGINFO, false);
         }
         mStreamer.setDisplayPreview(mCameraPreviewView);
-        //if (mIsLandscape) {
-        //    mStreamer.setOffscreenPreview(1280, 720);
-        //} else {
-        //    mStreamer.setOffscreenPreview(720, 1280);
-        //}
-        //断网等异常case触发自动重练
+        mStreamer.setEnableRepeatLastFrame(false);  // disable repeat last frame in background
         mStreamer.setEnableAutoRestart(true, 3000);
+        mStreamer.setCameraFacing(CameraCapture.FACING_FRONT);
         mStreamer.setFrontCameraMirror(mFrontMirrorCheckBox.isChecked());
         mStreamer.setMuteAudio(mMuteCheckBox.isChecked());
         mStreamer.setEnableAudioPreview(mAudioPreviewCheckBox.isChecked());
+        if (mStreamer.isAudioPreviewing() != mAudioPreviewCheckBox.isChecked()) {
+            mAudioPreviewCheckBox.setChecked(mStreamer.isAudioPreviewing());
+        }
         mStreamer.setOnInfoListener(mOnInfoListener);
         mStreamer.setOnErrorListener(mOnErrorListener);
         mStreamer.setOnLogEventListener(mOnLogEventListener);
-        //mStreamer.setOnAudioRawDataListener(mOnAudioRawDataListener);
-        //mStreamer.setOnPreviewFrameListener(mOnPreviewFrameListener);
 
         // set beauty filter
         initBeautyUI();
@@ -424,6 +412,14 @@ public class RTCActivity extends Activity implements
         mCameraPreviewView.setOnTouchListener(mCameraTouchHelper);
         // set CameraHintView to show focus rect and zoom ratio
         mCameraTouchHelper.setCameraHintView(mCameraHintView);
+
+        startCameraPreviewWithPermCheck();
+        if (mWaterMarkCheckBox.isChecked()) {
+            showWaterMark();
+        }
+        if (mAutoStart) {
+            startStream();
+        }
 
         //for rtc sub screen
         mCameraTouchHelper.addTouchListener(mRTCSubScreenTouchListener);
@@ -558,12 +554,12 @@ public class RTCActivity extends Activity implements
                 mOrientationEventListener.canDetectOrientation()) {
             mOrientationEventListener.enable();
         }
-        startCameraPreviewWithPermCheck();
+        mStreamer.setDisplayPreview(mCameraPreviewView);
         mStreamer.onResume();
-        if (mWaterMarkCheckBox.isChecked()) {
-            showWaterMark();
-        }
         mCameraHintView.hideAll();
+
+        // camera may be occupied by other app in background
+        startCameraPreviewWithPermCheck();
     }
 
     @Override
@@ -573,8 +569,6 @@ public class RTCActivity extends Activity implements
             mOrientationEventListener.disable();
         }
         mStreamer.onPause();
-        mStreamer.stopCameraPreview();
-        hideWaterMark();
     }
 
     @Override
@@ -606,11 +600,11 @@ public class RTCActivity extends Activity implements
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
                 onBackoffClick();
-                break;
+                return true;
             default:
                 break;
         }
-        return true;
+        return super.onKeyDown(keyCode, event);
     }
 
     private int getDisplayRotation() {
@@ -731,9 +725,6 @@ public class RTCActivity extends Activity implements
                 case StreamerConstants.KSY_STREAMER_CAMERA_INIT_DONE:
                     Log.d(TAG, "KSY_STREAMER_CAMERA_INIT_DONE");
                     setCameraAntiBanding50Hz();
-                    if (mAutoStart) {
-                        startStream();
-                    }
                     break;
                 case StreamerConstants.KSY_STREAMER_OPEN_STREAM_SUCCESS:
                     Log.d(TAG, "KSY_STREAMER_OPEN_STREAM_SUCCESS");
@@ -741,6 +732,11 @@ public class RTCActivity extends Activity implements
                     mChronometer.setBase(SystemClock.elapsedRealtime());
                     mChronometer.start();
                     beginInfoUploadTimer();
+                    break;
+                case StreamerConstants.KSY_STREAMER_OPEN_FILE_SUCCESS:
+                    Log.d(TAG, "KSY_STREAMER_OPEN_FILE_SUCCESS");
+                    mChronometer.setBase(SystemClock.elapsedRealtime());
+                    mChronometer.start();
                     break;
                 case StreamerConstants.KSY_STREAMER_FRAME_SEND_SLOW:
                     Log.d(TAG, "KSY_STREAMER_FRAME_SEND_SLOW " + msg1 + "ms");
@@ -841,24 +837,21 @@ public class RTCActivity extends Activity implements
                     break;
             }
             switch (what) {
-                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_UNKNOWN:
-                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_START_FAILED:
                 case StreamerConstants.KSY_STREAMER_AUDIO_RECORDER_ERROR_START_FAILED:
                 case StreamerConstants.KSY_STREAMER_AUDIO_RECORDER_ERROR_UNKNOWN:
                     break;
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_UNKNOWN:
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_START_FAILED:
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_EVICTED:
                 case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_SERVER_DIED:
                     mStreamer.stopCameraPreview();
-                    mMainHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            startCameraPreviewWithPermCheck();
-                        }
-                    }, 5000);
                     break;
                 case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_CLOSE_FAILED:
                 case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_ERROR_UNKNOWN:
                 case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_OPEN_FAILED:
+                case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_FORMAT_NOT_SUPPORTED:
                 case StreamerConstants.KSY_STREAMER_FILE_PUBLISHER_WRITE_FAILED:
+                    stopRecord();
                     break;
                 case StreamerConstants.KSY_STREAMER_VIDEO_ENCODER_ERROR_UNSUPPORTED:
                 case StreamerConstants.KSY_STREAMER_VIDEO_ENCODER_ERROR_UNKNOWN: {
@@ -900,35 +893,18 @@ public class RTCActivity extends Activity implements
                 }
             };
 
-    private OnAudioRawDataListener mOnAudioRawDataListener = new OnAudioRawDataListener() {
-        @Override
-        public short[] OnAudioRawData(short[] data, int count) {
-            Log.d(TAG, "OnAudioRawData data.length=" + data.length + " count=" + count);
-            //audio pcm data
-            return data;
-        }
-    };
-
-    private OnPreviewFrameListener mOnPreviewFrameListener = new OnPreviewFrameListener() {
-        @Override
-        public void onPreviewFrame(byte[] data, int width, int height, boolean isRecording) {
-            Log.d(TAG, "onPreviewFrame data.length=" + data.length + " " +
-                    width + "x" + height + " mRecording=" + isRecording);
-        }
-    };
-
     private void onSwitchCamera() {
         mStreamer.switchCamera();
         mCameraHintView.hideAll();
     }
 
     private void onFlashClick() {
-        if (isFlashOpened) {
+        if (mIsFlashOpened) {
             mStreamer.toggleTorch(false);
-            isFlashOpened = false;
+            mIsFlashOpened = false;
         } else {
             mStreamer.toggleTorch(true);
-            isFlashOpened = true;
+            mIsFlashOpened = true;
         }
     }
 
@@ -1028,8 +1004,7 @@ public class RTCActivity extends Activity implements
 
     private void onBgmChecked(boolean isChecked) {
         if (isChecked) {
-            // use KSYMediaPlayer instead of KSYBgmPlayer
-            mStreamer.getAudioPlayerCapture().setEnableMediaPlayer(true);
+            // use KSYMediaPlayer
             mStreamer.getAudioPlayerCapture().getMediaPlayer()
                     .setOnCompletionListener(new IMediaPlayer.OnCompletionListener() {
                         @Override
@@ -1062,10 +1037,11 @@ public class RTCActivity extends Activity implements
     }
 
     private void onWaterMarkChecked(boolean isChecked) {
-        if (isChecked)
+        if (isChecked) {
             showWaterMark();
-        else
+        } else {
             hideWaterMark();
+        }
     }
 
     private void onFrontMirrorChecked(boolean isChecked) {
@@ -1243,7 +1219,7 @@ public class RTCActivity extends Activity implements
             mRTCAuthResponse = new AuthHttpTask.KSYOnHttpResponse() {
                 @Override
                 public void onHttpResponse(int responseCode, final String response) {
-                    if(mMainHandler != null) {
+                    if (mMainHandler != null) {
                         if (responseCode == 200) {
                             mMainHandler.post(new Runnable() {
                                 @Override

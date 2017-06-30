@@ -9,6 +9,7 @@ import com.ksyun.media.rtc.demo.filter.DemoFilter4;
 import com.ksyun.media.rtc.kit.KSYRtcStreamer;
 import com.ksyun.media.rtc.kit.RTCClient;
 import com.ksyun.media.rtc.kit.RTCConstants;
+import com.ksyun.media.streamer.capture.CameraCapture;
 import com.ksyun.media.streamer.capture.camera.CameraTouchHelper;
 import com.ksyun.media.streamer.filter.audio.AudioFilterBase;
 import com.ksyun.media.streamer.filter.audio.AudioReverbFilter;
@@ -19,8 +20,6 @@ import com.ksyun.media.streamer.filter.imgtex.ImgTexFilter;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterBase;
 import com.ksyun.media.streamer.filter.imgtex.ImgTexFilterMgt;
 import com.ksyun.media.streamer.kit.KSYStreamer;
-import com.ksyun.media.streamer.kit.OnAudioRawDataListener;
-import com.ksyun.media.streamer.kit.OnPreviewFrameListener;
 import com.ksyun.media.streamer.kit.StreamerConstants;
 import com.ksyun.media.streamer.logstats.StatsLogReport;
 import com.ksyun.media.streamer.util.gles.GLRender;
@@ -31,7 +30,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -40,8 +38,6 @@ import android.graphics.RectF;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkRequest;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
@@ -76,7 +72,6 @@ import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -144,7 +139,7 @@ public class RTCChatActivity extends Activity implements
     private Handler mMainHandler;
 
     private boolean mIsLandscape;
-    private boolean isFlashOpened = false;
+    private boolean mIsFlashOpened = false;
     private String mBgmPath = "/sdcard/test.mp3";
     private String mLogoPath = "file:///sdcard/test.png";
 
@@ -284,7 +279,9 @@ public class RTCChatActivity extends Activity implements
                             mIsLandscape = (rotation % 180) != 0;
                             mRTCChat.setRotateDegrees(rotation);
                             hideWaterMark();
-                            showWaterMark();
+                            if (mWaterMarkCheckBox.isChecked()) {
+                                showWaterMark();
+                            }
                             mLastRotation = rotation;
                         }
                     }
@@ -300,20 +297,16 @@ public class RTCChatActivity extends Activity implements
             }
         }
         mRTCChat.setDisplayPreview(mCameraPreviewView);
-        //if (mIsLandscape) {
-        //    mRTCChat.setOffscreenPreview(1280, 720);
-        //} else {
-        //    mRTCChat.setOffscreenPreview(720, 1280);
-        //}
-        //断网等异常case触发自动重练
+        mRTCChat.setCameraFacing(CameraCapture.FACING_FRONT);
         mRTCChat.setFrontCameraMirror(mFrontMirrorCheckBox.isChecked());
         mRTCChat.setMuteAudio(mMuteCheckBox.isChecked());
         mRTCChat.setEnableAudioPreview(mAudioPreviewCheckBox.isChecked());
+        if (mRTCChat.isAudioPreviewing() != mAudioPreviewCheckBox.isChecked()) {
+            mAudioPreviewCheckBox.setChecked(mRTCChat.isAudioPreviewing());
+        }
         mRTCChat.setOnInfoListener(mOnInfoListener);
         mRTCChat.setOnErrorListener(mOnErrorListener);
         mRTCChat.setOnLogEventListener(mOnLogEventListener);
-        //mRTCChat.setOnAudioRawDataListener(mOnAudioRawDataListener);
-        //mRTCChat.setOnPreviewFrameListener(mOnPreviewFrameListener);
 
         // set beauty filter
         initBeautyUI();
@@ -340,6 +333,10 @@ public class RTCChatActivity extends Activity implements
         // set CameraHintView to show focus rect and zoom ratio
         mCameraTouchHelper.setCameraHintView(mCameraHintView);
 
+        startCameraPreviewWithPermCheck();
+        if (mWaterMarkCheckBox.isChecked()) {
+            showWaterMark();
+        }
         //for rtc sub screen
         mCameraTouchHelper.addTouchListener(mRTCSubScreenTouchListener);
 
@@ -469,29 +466,26 @@ public class RTCChatActivity extends Activity implements
 
     @Override
     public void onResume() {
-        Log.e(TAG, "onResume");
         super.onResume();
         if (mOrientationEventListener != null &&
                 mOrientationEventListener.canDetectOrientation()) {
             mOrientationEventListener.enable();
         }
-        startCameraPreviewWithPermCheck();
+        mRTCChat.setDisplayPreview(mCameraPreviewView);
         mRTCChat.onResume();
-        if (mWaterMarkCheckBox.isChecked()) {
-            showWaterMark();
-        }
         mCameraHintView.hideAll();
+
+        // camera may be occupied by other app in background
+        startCameraPreviewWithPermCheck();
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        Log.e(TAG, "onPause");
         if (mOrientationEventListener != null) {
             mOrientationEventListener.disable();
         }
         mRTCChat.onPause();
-        mRTCChat.stopCameraPreview();
         hideWaterMark();
     }
 
@@ -521,11 +515,11 @@ public class RTCChatActivity extends Activity implements
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
                 onBackoffClick();
-                break;
+                return true;
             default:
                 break;
         }
-        return true;
+        return super.onKeyDown(keyCode, event);
     }
 
     private int getDisplayRotation() {
@@ -621,19 +615,14 @@ public class RTCChatActivity extends Activity implements
                     break;
             }
             switch (what) {
-                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_UNKNOWN:
-                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_START_FAILED:
                 case StreamerConstants.KSY_STREAMER_AUDIO_RECORDER_ERROR_START_FAILED:
                 case StreamerConstants.KSY_STREAMER_AUDIO_RECORDER_ERROR_UNKNOWN:
                     break;
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_UNKNOWN:
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_START_FAILED:
+                case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_EVICTED:
                 case StreamerConstants.KSY_STREAMER_CAMERA_ERROR_SERVER_DIED:
                     mRTCChat.stopCameraPreview();
-                    mMainHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            startCameraPreviewWithPermCheck();
-                        }
-                    }, 5000);
                     break;
                 default:
                     break;
@@ -649,35 +638,18 @@ public class RTCChatActivity extends Activity implements
                 }
             };
 
-    private OnAudioRawDataListener mOnAudioRawDataListener = new OnAudioRawDataListener() {
-        @Override
-        public short[] OnAudioRawData(short[] data, int count) {
-            Log.d(TAG, "OnAudioRawData data.length=" + data.length + " count=" + count);
-            //audio pcm data
-            return data;
-        }
-    };
-
-    private OnPreviewFrameListener mOnPreviewFrameListener = new OnPreviewFrameListener() {
-        @Override
-        public void onPreviewFrame(byte[] data, int width, int height, boolean isRecording) {
-            Log.d(TAG, "onPreviewFrame data.length=" + data.length + " " +
-                    width + "x" + height + " mRecording=" + isRecording);
-        }
-    };
-
     private void onSwitchCamera() {
         mRTCChat.switchCamera();
         mCameraHintView.hideAll();
     }
 
     private void onFlashClick() {
-        if (isFlashOpened) {
+        if (mIsFlashOpened) {
             mRTCChat.toggleTorch(false);
-            isFlashOpened = false;
+            mIsFlashOpened = false;
         } else {
             mRTCChat.toggleTorch(true);
-            isFlashOpened = true;
+            mIsFlashOpened = true;
         }
     }
 
@@ -754,8 +726,7 @@ public class RTCChatActivity extends Activity implements
 
     private void onBgmChecked(boolean isChecked) {
         if (isChecked) {
-            // use KSYMediaPlayer instead of KSYBgmPlayer
-            mRTCChat.getAudioPlayerCapture().setEnableMediaPlayer(true);
+            // use KSYMediaPlayer
             mRTCChat.getAudioPlayerCapture().getMediaPlayer()
                     .setOnCompletionListener(new IMediaPlayer.OnCompletionListener() {
                         @Override
@@ -956,20 +927,22 @@ public class RTCChatActivity extends Activity implements
             mRTCAuthResponse = new AuthHttpTask.KSYOnHttpResponse() {
                 @Override
                 public void onHttpResponse(int responseCode, final String response) {
-                    if (responseCode == 200) {
-                        mMainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                doRegister(response);
-                            }
-                        });
-                    } else {
-                        mMainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                doAuthFailed();
-                            }
-                        });
+                    if (mMainHandler != null) {
+                        if (responseCode == 200) {
+                            mMainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    doRegister(response);
+                                }
+                            });
+                        } else {
+                            mMainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    doAuthFailed();
+                                }
+                            });
+                        }
                     }
                 }
             };
